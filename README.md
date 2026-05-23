@@ -211,4 +211,4 @@ pdflatex main.tex
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE) — © 2026 Ahmad Tawil.
