@@ -3,6 +3,8 @@
 > **Can an 8B model with agentic self-correction outperform a frontier model on multi-hop QA?**
 > This project answers that question empirically.
 
+[![Read Paper](https://img.shields.io/badge/Read%20Paper-PDF-red?style=for-the-badge&logo=adobeacrobatreader)](agentic-rag-arxiv/agentic_rag_vs_scale.pdf)
+
 ---
 
 ## Results
