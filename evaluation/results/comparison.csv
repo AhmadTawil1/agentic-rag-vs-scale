@@ -1,0 +1,5 @@
+Metric,System_A,System_B
+faithfulness,0.6450555555555556,0.6828724033760005
+answer_relevancy,0.6957777323498823,
+context_precision,,
+context_recall,0.735,0.7769784172661871
