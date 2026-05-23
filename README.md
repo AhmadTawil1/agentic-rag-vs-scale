@@ -20,6 +20,18 @@ Evaluated on **200 questions** from the HotpotQA distractor benchmark:
 
 **System B wins on every accuracy metric** despite using a model ~25× smaller. System A wins on reliability — System B exhausted Groq's daily token limit due to its multi-step pipeline (~8× more LLM calls per question).
 
+### Exact-Match Accuracy by Question Type
+![Exact Match](evaluation/results/chart_exact_match.png)
+
+### RAGAS Evaluation
+![RAGAS](evaluation/results/chart_ragas.png)
+
+### System B — Agentic Loop Behaviour
+![Loop Behaviour](evaluation/results/chart_loop_behaviour.png)
+
+### System B — Completion Rate
+![Completion](evaluation/results/chart_completion.png)
+
 ---
 
 ## Systems
