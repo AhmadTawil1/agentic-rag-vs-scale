@@ -40,7 +40,7 @@ TITAN_MODEL = "gpt-5.4-mini"
 TITAN_TEMPERATURE = 0.0
 
 # Evaluator
-EVALUATOR_MODEL = "gpt-5"
+EVALUATOR_MODEL = "gpt-5.4"
 
 # Agentic Workflow Configuration
 MAX_RETRIEVAL_LOOPS = 3

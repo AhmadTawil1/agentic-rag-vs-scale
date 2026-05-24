@@ -15,6 +15,7 @@ Then:
 """
 
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -51,9 +52,14 @@ def run_tournament(questions: list[dict] | None = None) -> tuple[Path, Path, Pat
     print("=" * 80)
     print(f"Questions : {len(questions)}")
     print(f"Collection: {HOTPOTQA_COLLECTION_NAME}  ({HOTPOTQA_CHROMA_DIR})")
+    llama_backend = (
+        "Ollama (local GPU)" if os.getenv("USE_OLLAMA", "").lower() == "true"
+        else "HuggingFace (local GPU)" if os.getenv("USE_LOCAL_LLM", "").lower() == "true"
+        else "Groq API"
+    )
     print(f"System A  : {GOLIATH_MODEL}  (naive RAG)")
-    print(f"System B  : llama-3.1-8b-instant via Groq  (agentic RAG)")
-    print(f"System C  : {HERMES_MODEL} via Groq  (naive RAG)")
+    print(f"System B  : {HERMES_MODEL} via {llama_backend}  (agentic RAG)")
+    print(f"System C  : {HERMES_MODEL} via {llama_backend}  (naive RAG)")
     print(f"System D  : {TITAN_MODEL}  (agentic RAG)")
     print("=" * 80)
 
