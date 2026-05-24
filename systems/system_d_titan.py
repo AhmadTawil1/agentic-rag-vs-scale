@@ -1,11 +1,7 @@
 """
-System B (David): Agentic RAG with Self-Correction
-Cyclic LangGraph pipeline with document grading, query rewriting, and
-hallucination checking.
-
-LLM backend (auto-selected by llm_factory):
-  - Local GPU (Colab T4): when USE_LOCAL_LLM=true  → no rate limits
-  - Groq API:             otherwise                 → GROQ_API_KEY with 3-tier fallback
+System D (Titan): Agentic RAG + GPT-5.4-mini
+Same cyclic LangGraph pipeline as System B (document grading, query rewriting,
+hallucination checking) but powered by GPT-5.4-mini via OpenAI.
 """
 
 import sys
@@ -18,6 +14,7 @@ from dotenv import load_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
+from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 
 load_dotenv()
@@ -25,14 +22,13 @@ load_dotenv()
 from config import (
     CHROMA_PERSIST_DIR,
     COLLECTION_NAME,
-    DAVID_MODEL,
-    DAVID_TEMPERATURE,
     EMBEDDING_MODEL,
     MAX_GENERATION_RETRIES,
     MAX_RETRIEVAL_LOOPS,
     RETRIEVAL_TOP_K,
+    TITAN_MODEL,
+    TITAN_TEMPERATURE,
 )
-from systems.llm_factory import get_llama_llm, invoke_llama
 
 
 class GraphState(TypedDict):
@@ -47,13 +43,13 @@ class GraphState(TypedDict):
     answer_grounded: bool
 
 
-def create_agentic_rag(
+def create_agentic_gpt_rag(
     vectorstore=None,
     collection_name: str | None = None,
     chroma_dir: str | None = None,
 ) -> object:
     """
-    Build and compile the agentic RAG graph.
+    Build and compile the agentic GPT RAG graph.
 
     Pass a pre-initialised `vectorstore` to avoid reloading the embedding model
     on every call (critical when running 200+ questions in a tournament).
@@ -70,7 +66,7 @@ def create_agentic_rag(
             collection_name=collection_name or COLLECTION_NAME,
         )
 
-    llm = get_llama_llm(model=DAVID_MODEL, temperature=DAVID_TEMPERATURE)
+    llm = ChatOpenAI(model=TITAN_MODEL, temperature=TITAN_TEMPERATURE)
 
     def retrieve(state: GraphState) -> dict:
         search_kwargs: dict = {"k": RETRIEVAL_TOP_K}
@@ -92,7 +88,7 @@ def create_agentic_rag(
             "For each document, reply with its number followed by 'yes' or 'no' "
             "(e.g. '1: yes'). Is it relevant to the question?"
         )
-        response = invoke_llama(llm, prompt, DAVID_MODEL, DAVID_TEMPERATURE).content.lower()
+        response = llm.invoke(prompt).content.lower()
         relevant_count = sum(
             1 for i in range(1, len(state["documents"]) + 1) if f"{i}: yes" in response
         )
@@ -105,7 +101,7 @@ def create_agentic_rag(
             f"Current query: {state['query']}\n\n"
             "Provide ONLY the rewritten query, nothing else."
         )
-        return {"query": invoke_llama(llm, prompt, DAVID_MODEL, DAVID_TEMPERATURE).content.strip()}
+        return {"query": llm.invoke(prompt).content.strip()}
 
     def generate(state: GraphState) -> dict:
         context = "\n\n".join(doc.page_content for doc in state["documents"])
@@ -117,7 +113,7 @@ def create_agentic_rag(
             f"Question: {state['question']}\n\nAnswer:"
         )
         return {
-            "answer": invoke_llama(llm, prompt, DAVID_MODEL, DAVID_TEMPERATURE).content.strip(),
+            "answer": llm.invoke(prompt).content.strip(),
             "generation_attempts": state.get("generation_attempts", 0) + 1,
         }
 
@@ -129,11 +125,7 @@ def create_agentic_rag(
             "Is every factual claim in the answer supported by the context above? "
             "Answer ONLY 'yes' or 'no'."
         )
-        return {
-            "answer_grounded": "yes" in invoke_llama(
-                llm, prompt, DAVID_MODEL, DAVID_TEMPERATURE
-            ).content.strip().lower()
-        }
+        return {"answer_grounded": "yes" in llm.invoke(prompt).content.strip().lower()}
 
     def route_after_grading(state: GraphState) -> str:
         if state["documents_relevant"]:
@@ -174,7 +166,7 @@ def create_agentic_rag(
     return workflow.compile()
 
 
-def run_agentic_rag(
+def run_agentic_gpt_rag(
     question: str,
     question_id: str | None = None,
     app=None,
@@ -183,13 +175,13 @@ def run_agentic_rag(
     chroma_dir: str | None = None,
 ) -> dict:
     """
-    Run the agentic RAG pipeline on a single question.
+    Run the agentic GPT RAG pipeline on a single question.
 
-    Pass a pre-compiled `app` (from create_agentic_rag) and a pre-initialised
+    Pass a pre-compiled `app` (from create_agentic_gpt_rag) and a pre-initialised
     `vectorstore` to avoid rebuilding the graph on every call.
     """
     if app is None:
-        app = create_agentic_rag(
+        app = create_agentic_gpt_rag(
             vectorstore=vectorstore,
             collection_name=collection_name,
             chroma_dir=chroma_dir,
@@ -217,7 +209,7 @@ def run_agentic_rag(
 
 
 if __name__ == "__main__":
-    result = run_agentic_rag("What is retrieval augmented generation?")
+    result = run_agentic_gpt_rag("What is retrieval augmented generation?")
     print(f"Answer: {result['answer']}")
     print(f"Retrieval attempts: {result['retrieval_attempts']}")
     print(f"Generation attempts: {result['generation_attempts']}")

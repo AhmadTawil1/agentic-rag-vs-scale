@@ -24,6 +24,12 @@ langchain-huggingface>=0.0.3
 # Benchmark datasets
 datasets>=2.14.0
 langchain-groq>=0.1.0
+langchain-ollama>=0.1.0
+
+# Local GPU inference (Colab T4 / any CUDA GPU)
+transformers>=4.40.0
+bitsandbytes>=0.43.0
+accelerate>=0.29.0
 
 # Utilities
 python-dotenv>=1.0.0

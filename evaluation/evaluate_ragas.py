@@ -1,16 +1,17 @@
 """
-RAGAS Evaluation: Score both systems using RAGAS metrics
+RAGAS Evaluation: Score all four systems using RAGAS metrics.
+Evaluator: GPT-5
 """
 
 import sys
 import json
 import os
 from pathlib import Path
+import numpy as np
 import pandas as pd
 from datasets import Dataset
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 sys.path.append(str(Path(__file__).parent.parent))
@@ -19,174 +20,162 @@ from ragas import evaluate
 from ragas.metrics import Faithfulness, AnswerRelevancy, ContextPrecision, ContextRecall
 from langchain_openai import ChatOpenAI
 
+from config import EVALUATOR_MODEL
+
 
 def load_results(results_path):
-    """Load results from JSON file."""
-    with open(results_path, 'r', encoding='utf-8') as f:
+    with open(results_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def prepare_ragas_dataset(results):
-    """
-    Convert results to RAGAS dataset format.
-    
-    RAGAS expects:
-    - question: str
-    - answer: str
-    - contexts: List[str]
-    - ground_truth: str
-    """
-    data = {
-        "question": [],
-        "answer": [],
-        "contexts": [],
-        "ground_truth": []
-    }
-    
+    """Convert results list to RAGAS Dataset, skipping ERROR entries."""
+    data = {"question": [], "answer": [], "contexts": [], "ground_truth": []}
     for result in results:
-        # Skip errors
         if result["answer"].startswith("ERROR"):
             continue
-        
         data["question"].append(result["question"])
         data["answer"].append(result["answer"])
         data["contexts"].append(result["contexts"])
         data["ground_truth"].append(result["ground_truth"])
-    
     return Dataset.from_dict(data)
 
 
 def evaluate_system(results_path, system_name):
     """
-    Evaluate a system using RAGAS metrics.
-    
-    Args:
-        results_path: Path to results JSON file
-        system_name: Name of the system (for display)
-        
+    Evaluate a single system using RAGAS metrics.
+
     Returns:
-        Dictionary of metric scores
+        dict of metric → mean score
     """
     print(f"\n{'='*80}")
     print(f"EVALUATING {system_name}")
     print(f"{'='*80}")
-    
-    # Load results
+
     results = load_results(results_path)
     print(f"Loaded {len(results)} results")
-    
-    # Prepare dataset
+
     dataset = prepare_ragas_dataset(results)
     print(f"Prepared {len(dataset)} valid samples for evaluation")
-    
-    # Initialize LLM for RAGAS (uses GPT-4o-mini for evaluation)
-    llm = ChatOpenAI(model="gpt-5.4", temperature=0)
-    
-    # Run evaluation
+
+    llm = ChatOpenAI(model=EVALUATOR_MODEL, temperature=0)
+
     print("\nRunning RAGAS evaluation...")
     print("Metrics: Faithfulness, Answer Relevancy, Context Precision, Context Recall")
-    
+
     evaluation_result = evaluate(
         dataset,
         metrics=[
             Faithfulness(),
             AnswerRelevancy(),
             ContextPrecision(),
-            ContextRecall()
+            ContextRecall(),
         ],
-        llm=llm
+        llm=llm,
     )
-    
-    # Extract scores (RAGAS returns per-sample scores, we need to aggregate)
-    import numpy as np
-    
+
     scores = {
         "faithfulness": np.mean(evaluation_result["faithfulness"]),
         "answer_relevancy": np.mean(evaluation_result["answer_relevancy"]),
         "context_precision": np.mean(evaluation_result["context_precision"]),
-        "context_recall": np.mean(evaluation_result["context_recall"])
+        "context_recall": np.mean(evaluation_result["context_recall"]),
     }
-    
-    # Display results
+
     print(f"\n{'-'*80}")
     print(f"RESULTS FOR {system_name}")
     print(f"{'-'*80}")
     for metric, score in scores.items():
         print(f"{metric:20s}: {score:.4f}")
-    
+
     return scores
 
 
-def compare_systems(results_a_path, results_b_path):
+def compare_systems(
+    results_a_path,
+    results_b_path,
+    results_c_path=None,
+    results_d_path=None,
+):
     """
-    Evaluate and compare both systems.
-    
-    Args:
-        results_a_path: Path to System A results
-        results_b_path: Path to System B results
+    Evaluate and compare up to four systems.
+
+    System A — Goliath  (Naive RAG + GPT-5.4-mini)
+    System B — David    (Agentic RAG + Llama)
+    System C — Hermes   (Naive RAG + Llama)          [optional]
+    System D — Titan    (Agentic RAG + GPT-5.4-mini) [optional]
     """
     print("=" * 80)
     print("RAG SYSTEMS EVALUATION WITH RAGAS")
+    print(f"Evaluator: {EVALUATOR_MODEL}")
     print("=" * 80)
-    
-    # Evaluate System A
-    scores_a = evaluate_system(results_a_path, "SYSTEM A (Goliath - Baseline)")
-    
-    # Evaluate System B
-    scores_b = evaluate_system(results_b_path, "SYSTEM B (David - Agentic)")
-    
-    # Comparison
+
+    systems: dict[str, dict] = {}
+    systems["System A (Goliath — Naive GPT)"] = evaluate_system(
+        results_a_path, "SYSTEM A (Goliath — Naive GPT)"
+    )
+    systems["System B (David — Agentic Llama)"] = evaluate_system(
+        results_b_path, "SYSTEM B (David — Agentic Llama)"
+    )
+    if results_c_path:
+        systems["System C (Hermes — Naive Llama)"] = evaluate_system(
+            results_c_path, "SYSTEM C (Hermes — Naive Llama)"
+        )
+    if results_d_path:
+        systems["System D (Titan — Agentic GPT)"] = evaluate_system(
+            results_d_path, "SYSTEM D (Titan — Agentic GPT)"
+        )
+
+    # --- Comparison table ---
+    metrics = list(next(iter(systems.values())).keys())
+    names = list(systems.keys())
+
+    col_w = 14
     print(f"\n{'='*80}")
     print("COMPARISON")
     print(f"{'='*80}")
-    print(f"{'Metric':<20s} {'System A':>12s} {'System B':>12s} {'Winner':>12s}")
-    print(f"{'-'*80}")
-    
-    for metric in scores_a.keys():
-        a_score = scores_a[metric]
-        b_score = scores_b[metric]
-        winner = "System A" if a_score > b_score else "System B" if b_score > a_score else "Tie"
-        
-        print(f"{metric:<20s} {a_score:>12.4f} {b_score:>12.4f} {winner:>12s}")
-    
-    # Overall winner
-    a_wins = sum(1 for metric in scores_a.keys() if scores_a[metric] > scores_b[metric])
-    b_wins = sum(1 for metric in scores_a.keys() if scores_b[metric] > scores_a[metric])
-    
+    header = f"{'Metric':<20s}" + "".join(f"{n[:col_w]:>{col_w}s}" for n in names) + f"{'Winner':>14s}"
+    print(header)
+    print("-" * len(header))
+
+    winners: dict[str, int] = {n: 0 for n in names}
+    for metric in metrics:
+        scores = {n: systems[n][metric] for n in names}
+        best = max(scores, key=scores.__getitem__)
+        winners[best] += 1
+        row = f"{metric:<20s}" + "".join(f"{scores[n]:>{col_w}.4f}" for n in names) + f"{best[:14]:>14s}"
+        print(row)
+
     print(f"\n{'='*80}")
-    print(f"System A wins: {a_wins}/4 metrics")
-    print(f"System B wins: {b_wins}/4 metrics")
-    
-    if a_wins > b_wins:
-        print("\n🏆 WINNER: System A (Goliath - Baseline)")
-    elif b_wins > a_wins:
-        print("\n🏆 WINNER: System B (David - Agentic)")
-    else:
-        print("\n🤝 RESULT: Tie")
-    
+    for name, wins in winners.items():
+        print(f"{name}: {wins}/{len(metrics)} metrics won")
+
+    overall_winner = max(winners, key=winners.__getitem__)
+    print(f"\n🏆 WINNER: {overall_winner}")
     print("=" * 80)
-    
-    # Save comparison
-    comparison_df = pd.DataFrame({
-        "Metric": list(scores_a.keys()),
-        "System_A": list(scores_a.values()),
-        "System_B": list(scores_b.values())
-    })
-    
+
+    # --- Save CSV ---
+    comparison_df = pd.DataFrame(
+        {
+            "Metric": metrics,
+            **{n: [systems[n][m] for m in metrics] for n in names},
+        }
+    )
     comparison_path = Path(results_a_path).parent / "comparison.csv"
     comparison_df.to_csv(comparison_path, index=False)
     print(f"\nComparison saved to: {comparison_path}")
-    
-    return scores_a, scores_b
+
+    return systems
 
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Evaluate RAG systems with RAGAS")
     parser.add_argument("--system-a", required=True, help="Path to System A results JSON")
     parser.add_argument("--system-b", required=True, help="Path to System B results JSON")
-    
+    parser.add_argument("--system-c", default=None, help="Path to System C results JSON (optional)")
+    parser.add_argument("--system-d", default=None, help="Path to System D results JSON (optional)")
+
     args = parser.parse_args()
-    
-    compare_systems(args.system_a, args.system_b)
+
+    compare_systems(args.system_a, args.system_b, args.system_c, args.system_d)

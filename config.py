@@ -15,14 +15,32 @@ CHROMA_PERSIST_DIR = "./chroma_db"
 COLLECTION_NAME = "rag_research_docs"
 
 # Model Configuration
-# System A (Goliath)
+# System A (Goliath) — Naive RAG + GPT-5.4-mini
 GOLIATH_MODEL = "gpt-5.4-mini"
 GOLIATH_TEMPERATURE = 0.0
 
-# System B (David)
-DAVID_MODEL = "llama-3.2-1b"  # 1B parameter model (smallest)
+# System B (David) — Agentic RAG + Llama-3.1-8B via Groq
+DAVID_MODEL = "llama-3.1-8b-instant"
 DAVID_TEMPERATURE = 0.0
-DAVID_API_BASE = "http://localhost:11434"  # Ollama default
+
+# System C (Hermes) — Naive RAG + Llama-3.1-8B via Groq
+HERMES_MODEL = "llama-3.1-8b-instant"
+HERMES_TEMPERATURE = 0.0
+
+# Local Ollama fallback (same model, different name format used by Ollama)
+OLLAMA_LLAMA_MODEL = "llama3.1:8b"
+OLLAMA_BASE_URL = "http://localhost:11434"
+
+# Local GPU inference (Colab T4 / CUDA)
+# Override via LOCAL_LLM_MODEL env var if needed
+LOCAL_LLM_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+
+# System D (Titan) — Agentic RAG + GPT-5.4-mini
+TITAN_MODEL = "gpt-5.4-mini"
+TITAN_TEMPERATURE = 0.0
+
+# Evaluator
+EVALUATOR_MODEL = "gpt-5"
 
 # Agentic Workflow Configuration
 MAX_RETRIEVAL_LOOPS = 3
@@ -35,5 +53,5 @@ RAGAS_METRICS = ["faithfulness", "answer_relevance", "context_precision", "conte
 # HotpotQA Benchmark
 HOTPOTQA_COLLECTION_NAME = "hotpotqa_dev"
 HOTPOTQA_CHROMA_DIR = "./chroma_hotpotqa"
-HOTPOTQA_SAMPLE_SIZE = 200   # number of questions sampled from the validation split
+HOTPOTQA_SAMPLE_SIZE = 100   # number of questions sampled from the validation split
 HOTPOTQA_SEED = 42
