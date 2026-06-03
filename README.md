@@ -3,7 +3,7 @@
 > **Does an agentic self-correction pipeline always beat a simpler one? Does a bigger model?**
 > This project answers both questions with a controlled 2×2 factorial experiment.
 
-[![Read Paper](https://img.shields.io/badge/Read%20Paper-LaTeX-red?style=for-the-badge&logo=adobeacrobatreader)](agentic-rag-arxiv/main.tex)
+[![Read Paper](https://img.shields.io/badge/Read%20Paper-LaTeX-red?style=for-the-badge&logo=adobeacrobatreader)](agentic-rag-arxiv/agentic_rag_vs_scale.pdf)
 
 ---
 
